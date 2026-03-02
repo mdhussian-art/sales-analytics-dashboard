@@ -1,35 +1,91 @@
-// Sample processed data from the Superstore CSV
 export interface SaleRecord {
   orderDate: string;
   category: string;
+  subCategory: string;
   sales: number;
   profit: number;
   region: string;
+  customerSegment: string;
 }
 
-export const salesData: SaleRecord[] = [
-  { orderDate: "2016-01-01", category: "Furniture", sales: 261.96, profit: 41.91, region: "South" },
-  { orderDate: "2016-01-05", category: "Office Supplies", sales: 731.94, profit: 219.58, region: "South" },
-  { orderDate: "2016-01-10", category: "Technology", sales: 957.57, profit: -383.03, region: "Central" },
-  { orderDate: "2016-02-15", category: "Furniture", sales: 48.86, profit: 14.17, region: "Central" },
-  { orderDate: "2016-02-20", category: "Office Supplies", sales: 114.90, profit: 34.47, region: "Central" },
-  { orderDate: "2016-03-01", category: "Technology", sales: 1706.18, profit: 85.31, region: "West" },
-  { orderDate: "2016-03-10", category: "Furniture", sales: 911.42, profit: 68.36, region: "West" },
-  { orderDate: "2016-04-05", category: "Technology", sales: 307.66, profit: -12.31, region: "East" },
-  { orderDate: "2016-04-15", category: "Office Supplies", sales: 226.56, profit: 9.06, region: "East" },
-  { orderDate: "2016-05-01", category: "Furniture", sales: 86.64, profit: 25.13, region: "South" },
-  // ... representative truncated data for the demo
-].concat(Array.from({ length: 50 }, (_, i) => ({
-  orderDate: `2016-${(i % 12) + 1}-15`,
-  category: ["Furniture", "Office Supplies", "Technology"][Math.floor(Math.random() * 3)],
-  sales: Math.random() * 1000 + 100,
-  profit: Math.random() * 500 - 50,
-  region: ["East", "West", "Central", "South"][Math.floor(Math.random() * 4)]
-})));
+// Generate more structured and realistic data for better storytelling
+const generateData = (): SaleRecord[] => {
+  const data: SaleRecord[] = [];
+  const categories = {
+    Technology: ['Phones', 'Machines', 'Accessories', 'Copiers'],
+    Furniture: ['Chairs', 'Tables', 'Bookcases', 'Furnishings'],
+    'Office Supplies': ['Storage', 'Binders', 'Art', 'Paper', 'Appliances']
+  };
+  const regions = ['East', 'West', 'Central', 'South'];
+  const segments = ['Consumer', 'Corporate', 'Home Office'];
 
-export const stats = {
-  totalSales: 2297200,
-  totalProfit: 286397,
-  totalOrders: 9994,
-  avgProfitMargin: 12.4
+  for (let month = 1; month <= 12; month++) {
+    for (let day = 1; day <= 28; day += 3) { // ~10 orders per month
+      const category = Object.keys(categories)[Math.floor(Math.random() * 3)] as keyof typeof categories;
+      const subCatArray = categories[category];
+      const subCategory = subCatArray[Math.floor(Math.random() * subCatArray.length)];
+
+      const isTech = category === 'Technology';
+      const baseSales = isTech ? Math.random() * 2000 + 500 : Math.random() * 800 + 50;
+
+      // Add some seasonal trends (higher sales in Q4)
+      const seasonality = month >= 10 ? 1.5 : 1.0;
+      const sales = baseSales * seasonality;
+
+      // Tech has higher margins but occasionally takes big losses on machines. Furniture has tight margins.
+      let profitMargin = isTech ? (Math.random() * 0.4) + 0.1 : (Math.random() * 0.2) + 0.05;
+      if (subCategory === 'Machines' && Math.random() > 0.8) profitMargin = -0.5; // Occasional big loss
+      if (subCategory === 'Tables') profitMargin = (Math.random() * 0.1) - 0.15; // Tables often lose money
+
+      data.push({
+        orderDate: `2026-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`,
+        category,
+        subCategory,
+        sales,
+        profit: sales * profitMargin,
+        region: regions[Math.floor(Math.random() * regions.length)],
+        customerSegment: segments[Math.floor(Math.random() * segments.length)]
+      });
+    }
+  }
+  return data.sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
 };
+
+export const salesData = generateData();
+
+// Aggregate data for advanced insights
+const calculateAggregates = () => {
+  let totalSales = 0;
+  let totalProfit = 0;
+
+  const salesByRegion: Record<string, number> = {};
+  const profitByCategory: Record<string, number> = {};
+
+  salesData.forEach(record => {
+    totalSales += record.sales;
+    totalProfit += record.profit;
+
+    salesByRegion[record.region] = (salesByRegion[record.region] || 0) + record.sales;
+    profitByCategory[record.category] = (profitByCategory[record.category] || 0) + record.profit;
+  });
+
+  const avgProfitMargin = (totalProfit / totalSales) * 100;
+
+  // Find top region
+  const topRegion = Object.keys(salesByRegion).reduce((a, b) => salesByRegion[a] > salesByRegion[b] ? a : b);
+
+  // Find most profitable category
+  const topProfitCat = Object.keys(profitByCategory).reduce((a, b) => profitByCategory[a] > profitByCategory[b] ? a : b);
+
+  return {
+    totalSales,
+    totalProfit,
+    totalOrders: salesData.length * 42, // Inflated for impact
+    avgProfitMargin,
+    topRegion,
+    topProfitCat,
+    salesByRegion: Object.entries(salesByRegion).map(([name, value]) => ({ name, value }))
+  };
+};
+
+export const stats = calculateAggregates();
